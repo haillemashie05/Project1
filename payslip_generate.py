@@ -16,6 +16,7 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 # Debug check for environment variables
 if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
     print("❌ ERROR: EMAIL_ADDRESS or EMAIL_PASSWORD not set in .env")
+    
     exit()
 
 # Create payslips folder
@@ -33,63 +34,64 @@ df.columns = df.columns.str.strip()  # Clean headers
 import random
 def generate_payslip(emp):
     from fpdf import FPDF
+    import random
 
     pdf = FPDF()
     pdf.add_page()
 
-    # ✅ List of departments to randomly assign
+    # === Setup styling ===
+    company_color = (0, 102, 204)         # Deep Sky Blue
+    header_bg = (0, 102, 204)
+    section_bg = (245, 250, 255)
+    border_color = (100, 100, 100)
+    text_primary = (0, 51, 102)
+    earnings_bg = (235, 245, 255)
+    net_bg = (220, 255, 220)
+
     departments = [
         "Research & Development", "Sales & Marketing", "Production", "Quality Assurance",
         "Regulatory Affairs", "Finance", "Human Resources", "IT Support"
     ]
-    department = random.choice(departments)  # ✅ pick random department for this employee
+    department = random.choice(departments)
+    net_salary = emp['Basic Salary'] + emp['Allowances'] - emp['Deductions']
 
-    # 🎨 Colors and styling
-    header_fill = (0, 102, 204)         # Deep blue for header
-    section_fill = (240, 248, 255)      # Light blue background
-    border_color = (100, 100, 100)
-    earnings_fill = (225, 235, 255)
-    net_fill = (204, 255, 204)          # Light green
-    title_color = (0, 51, 102)
-
-    # === 🏢 Company Header ===
-    pdf.set_fill_color(*header_fill)
+    # === 🏢 Header: Company Title ===
+    pdf.set_fill_color(*header_bg)
     pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Arial", 'B', 22)
+    pdf.set_font("Arial", 'B', 20)
     pdf.cell(0, 15, "Sky Pharmaceuticals", ln=True, align='C', fill=True)
 
-    pdf.set_font("Arial", 'I', 13)
-    pdf.cell(0, 10, "Official Employee Payslip", ln=True, align='C', fill=True)
-    pdf.ln(10)
+    pdf.set_font("Arial", 'I', 12)
+    pdf.cell(0, 10, "Official Payslip Document", ln=True, align='C', fill=True)
+    pdf.ln(8)
 
-    # === 👤 Employee Information ===
+    # === 👤 Employee Info Section ===
+    pdf.set_text_color(*text_primary)
+    pdf.set_fill_color(*section_bg)
     pdf.set_draw_color(*border_color)
-    pdf.set_fill_color(*section_fill)
-    pdf.set_text_color(*title_color)
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, "Employee Information", ln=True, border=1, fill=True)
+    pdf.set_font("Arial", 'B', 13)
+    pdf.cell(0, 10, "Employee Details", ln=True, fill=True, border=1)
 
-    pdf.set_font("Arial", '', 12)
-    emp_fields = [
+    pdf.set_font("Arial", '', 11)
+    fields = [
         ("Employee ID", emp['Employee ID']),
         ("Name", emp['Name']),
         ("Job Title", emp.get('Job Title', 'Not Provided')),
         ("Department", department),
         ("Pay Period", emp.get('Month', 'This Month'))
     ]
-    for label, value in emp_fields:
+    for label, value in fields:
         pdf.cell(0, 10, f"{label}: {value}", ln=True, border=1)
     pdf.ln(5)
 
-    # === 💵 Earnings and Deductions ===
-    pdf.set_fill_color(*earnings_fill)
-    pdf.set_font("Arial", 'B', 13)
+    # === 💵 Salary Breakdown Section ===
+    pdf.set_font("Arial", 'B', 12)
+    pdf.set_fill_color(*earnings_bg)
     pdf.cell(95, 10, "EARNINGS", border=1, align='C', fill=True)
     pdf.cell(95, 10, "DEDUCTIONS", border=1, align='C', fill=True)
-    pdf.ln()
-
-    pdf.set_font("Arial", '', 12)
+    pdf.set_font("Arial", '', 11)
     pdf.set_fill_color(255, 255, 255)
+    pdf.ln()
     pdf.cell(95, 10, f"Basic Salary: ${emp['Basic Salary']:.2f}", border=1)
     pdf.cell(95, 10, f"Deductions: ${emp['Deductions']:.2f}", border=1)
     pdf.ln()
@@ -97,25 +99,22 @@ def generate_payslip(emp):
     pdf.cell(95, 10, "", border=1)
     pdf.ln(10)
 
-    # === 💰 Net Salary Summary ===
-    net_salary = emp['Basic Salary'] + emp['Allowances'] - emp['Deductions']
-    pdf.set_fill_color(*net_fill)
+    # === ✅ Net Salary Highlight ===
+    pdf.set_font("Arial", 'B', 13)
     pdf.set_text_color(0, 102, 0)
-    pdf.set_font("Arial", 'B', 14)
+    pdf.set_fill_color(*net_bg)
     pdf.cell(0, 12, f"NET SALARY: ${net_salary:.2f}", ln=True, align='C', border=1, fill=True)
 
-    # Footer note
+    # === 📄 Footer Note ===
     pdf.set_text_color(100, 100, 100)
     pdf.set_font("Arial", 'I', 10)
     pdf.ln(8)
-    pdf.cell(0, 10, "This is a computer-generated payslip and does not require a signature.", align='C')
+    pdf.cell(0, 10, "This document is system-generated and does not require a signature.", align='C')
 
-    # Save PDF
+    # === Save Payslip ===
     filename = f"payslips/{emp['Employee ID']}.pdf"
     pdf.output(filename)
     return filename
-
-
 
 # Email sender
 def send_email(to_email, filename, name):
